@@ -1,0 +1,372 @@
+const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
+
+interface LoginRequest {
+  emailOrMobile: string;
+  password: string;
+}
+
+interface LoginResponse {
+  success: boolean;
+  data?: {
+    access_token: string;
+    user: {
+      id: string;
+      email: string;
+      role: string;
+      // Add other user fields as needed
+    };
+  };
+  message?: string;
+}
+
+interface AnalyticsResponse {
+  success: boolean;
+  data?: {
+    usersCount: number;
+    riders: {
+      approved: number;
+      unapproved: number;
+    };
+    ordersCount: number;
+    ordersStatus: {
+      pending: number;
+      inProgress: number;
+      completed: number;
+    };
+    totalDeliveryFee: number;
+  };
+}
+
+interface RiderRevenueResponse {
+  success: boolean;
+  data?: Array<{
+    riderId: string;
+    firstName: string;
+    lastName: string;
+    ordersFulfilled: string;
+    totalEarnings: string;
+  }>;
+}
+
+interface UsersResponse {
+  success: boolean;
+  data?: {
+    users: Array<{
+      id: string;
+      email: string | null;
+      mobile: string;
+      firstName: string;
+      lastName: string;
+      role: string;
+      profilePic: string;
+      countryCode: string;
+      registrationDate: string;
+      updatedAt: string;
+      registrationMode: string;
+    }>;
+    count: number;
+  };
+}
+
+interface OrdersResponse {
+  success: boolean;
+  data?: {
+    orders: Array<{
+      id: string;
+      status: string;
+      isRiderAssigned: boolean;
+      hasRewardedRider: boolean;
+      deliveryFee: number;
+      totalAmount: number;
+    }>;
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  };
+}
+
+interface OrderDetailsResponse {
+  success: boolean;
+  data?: any; // Define proper type based on actual response
+  message?: string;
+}
+
+export enum DocumentStatus {
+  INITIAL = "INITIAL",
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+}
+
+interface RiderDocument {
+  id: string;
+  docName: string;
+  docUrl: string;
+  documentStatus: DocumentStatus;
+  expirationDate: string | null;
+  rejectionReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface RiderInfo {
+  id: string;
+  userId: string;
+  vehicleType: string;
+  documentStatus: DocumentStatus;
+  rejectionReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  documents: RiderDocument[];
+}
+
+interface RiderDocumentsResponse {
+  success: boolean;
+  data?: RiderInfo[];
+  message?: string;
+}
+
+interface UpdateDocumentStatusRequest {
+  documentStatus: DocumentStatus;
+  rejectionReason?: string | null;
+}
+
+interface UpdateDocumentStatusResponse {
+  success: boolean;
+  data?: RiderDocument;
+  message?: string;
+}
+
+interface VehicleDocumentSetting {
+  id: string;
+  vehicleType: string;
+  docName: string;
+  requiresExpiration: boolean;
+  isRequired: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface VehicleDocumentSettingsResponse {
+  success: boolean;
+  data?: VehicleDocumentSetting[];
+  message?: string;
+}
+
+interface VehicleDocumentSettingResponse {
+  success: boolean;
+  data?: VehicleDocumentSetting;
+  message?: string;
+}
+
+interface CreateVehicleDocumentSettingRequest {
+  vehicleType: string;
+  docName: string;
+  requiresExpiration: boolean;
+  isRequired: boolean;
+}
+
+interface UpdateVehicleDocumentSettingRequest {
+  vehicleType?: string;
+  docName?: string;
+  requiresExpiration?: boolean;
+  isRequired?: boolean;
+}
+
+export const api = {
+  auth: {
+    login: async (data: LoginRequest): Promise<LoginResponse> => {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      return response.json();
+    },
+  },
+
+  admin: {
+    getAnalytics: async (
+      token: string,
+      startDate: string,
+      endDate: string
+    ): Promise<AnalyticsResponse> => {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/analytics?startDate=${startDate}&endDate=${endDate}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      return response.json();
+    },
+
+    getRiderRevenue: async (
+      token: string,
+      startDate: string,
+      endDate: string
+    ): Promise<RiderRevenueResponse> => {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/riders/revenue?startDate=${startDate}&endDate=${endDate}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      return response.json();
+    },
+
+    getUsers: async (
+      token: string,
+      role: string,
+      page?: number,
+      limit?: number
+    ): Promise<UsersResponse> => {
+      const params = new URLSearchParams({ role });
+      if (page !== undefined) params.append("page", page.toString());
+      if (limit !== undefined) params.append("limit", limit.toString());
+      const response = await fetch(
+        `${API_BASE_URL}/admin/users?${params.toString()}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      return response.json();
+    },
+
+    getOrders: async (
+      token: string,
+      status: string
+    ): Promise<OrdersResponse> => {
+      const response = await fetch(`${API_BASE_URL}/admin/orders/${status}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return response.json();
+    },
+
+    getOrderDetails: async (
+      token: string | null,
+      orderId: string
+    ): Promise<OrderDetailsResponse> => {
+      const headers: Record<string, string> = {};
+      if (token) headers.Authorization = `Bearer ${token}`;
+
+      const response = await fetch(
+        `${API_BASE_URL}/admin/orders/details/${orderId}`,
+        { headers }
+      );
+      return response.json();
+    },
+
+    // Rider Documents APIs
+    getRiderDocuments: async (
+      token: string,
+      status: DocumentStatus
+    ): Promise<RiderDocumentsResponse> => {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/riders/document-status?status=${status}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      return response.json();
+    },
+
+    updateDocumentStatus: async (
+      token: string,
+      documentId: string,
+      data: UpdateDocumentStatusRequest
+    ): Promise<UpdateDocumentStatusResponse> => {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/riders/documents/${documentId}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        }
+      );
+      return response.json();
+    },
+
+    // Vehicle Document Settings APIs
+    getVehicleDocumentSettings: async (
+      token: string
+    ): Promise<VehicleDocumentSettingsResponse> => {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/vehicle-document-settings`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      return response.json();
+    },
+
+    getVehicleDocumentSettingById: async (
+      token: string,
+      id: string
+    ): Promise<VehicleDocumentSettingResponse> => {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/vehicle-document-settings/${id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      return response.json();
+    },
+
+    createVehicleDocumentSetting: async (
+      token: string,
+      data: CreateVehicleDocumentSettingRequest
+    ): Promise<VehicleDocumentSettingResponse> => {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/vehicle-document-settings`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        }
+      );
+      return response.json();
+    },
+
+    updateVehicleDocumentSetting: async (
+      token: string,
+      id: string,
+      data: UpdateVehicleDocumentSettingRequest
+    ): Promise<VehicleDocumentSettingResponse> => {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/vehicle-document-settings/${id}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        }
+      );
+      return response.json();
+    },
+
+    deleteVehicleDocumentSetting: async (
+      token: string,
+      id: string
+    ): Promise<{ success: boolean; message?: string }> => {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/vehicle-document-settings/${id}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      return response.json();
+    },
+  },
+};
