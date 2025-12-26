@@ -36,6 +36,7 @@ export function DashboardAnalytics({}: DashboardAnalyticsProps) {
     const fetchAnalytics = async () => {
       try {
         const result = await api.admin.getAnalytics(token!, startDate, endDate);
+        console.log("Analytics data:", result?.data);
         if (result.success) {
           setData(result.data);
         }
@@ -74,7 +75,7 @@ export function DashboardAnalytics({}: DashboardAnalyticsProps) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <Card className="bg-card border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-card-foreground">
@@ -109,6 +110,20 @@ export function DashboardAnalytics({}: DashboardAnalyticsProps) {
         <Card className="bg-card border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-card-foreground">
+              Unapproved Riders
+            </CardTitle>
+            <Users className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-card-foreground">
+              {data.riders.unapproved}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card border-border">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-card-foreground">
               Total Orders
             </CardTitle>
             <Package className="w-4 h-4 text-muted-foreground" />
@@ -132,7 +147,7 @@ export function DashboardAnalytics({}: DashboardAnalyticsProps) {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-card-foreground">
-              ${data.totalDeliveryFee.toLocaleString()}
+              ₦{data.totalDeliveryFee.toLocaleString()}
             </div>
           </CardContent>
         </Card>

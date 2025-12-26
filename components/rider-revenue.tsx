@@ -114,7 +114,7 @@ export function RiderRevenue({}: RiderRevenueProps) {
                       {rider.ordersFulfilled}
                     </TableCell>
                     <TableCell className="text-card-foreground font-semibold">
-                      ${Number.parseFloat(rider.totalEarnings).toLocaleString()}
+                      ₦{Number.parseFloat(rider.totalEarnings).toLocaleString()}
                     </TableCell>
                   </TableRow>
                 ))

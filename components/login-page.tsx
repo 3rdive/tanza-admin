@@ -114,12 +114,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               {loading ? "Logging in..." : "Login"}
             </Button>
           </form>
-
-          <div className="mt-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-border/60" />
-            <span className="text-xs text-muted-foreground">OR</span>
-            <div className="h-px flex-1 bg-border/60" />
-          </div>
         </div>
       </div>
     </div>

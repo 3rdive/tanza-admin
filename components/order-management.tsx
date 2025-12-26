@@ -199,10 +199,10 @@ export function OrderManagement({}: OrderManagementProps) {
                         )}
                       </TableCell>
                       <TableCell className="text-card-foreground">
-                        ${order.deliveryFee.toLocaleString()}
+                        ₦{order.deliveryFee.toLocaleString()}
                       </TableCell>
                       <TableCell className="font-semibold text-card-foreground">
-                        ${order.totalAmount.toLocaleString()}
+                        ₦{order.totalAmount.toLocaleString()}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>

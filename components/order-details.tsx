@@ -85,7 +85,7 @@ interface OrderDetailsProps {
 
 function formatCurrency(amount?: number) {
   if (amount == null) return "-";
-  return `$${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  return `₦${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 }
 
 function getAmountColor(type: string) {
