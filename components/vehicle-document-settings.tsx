@@ -50,9 +50,22 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+interface VehicleType {
+  id: string;
+  name: string;
+  description: string;
+  baseFee: number;
+  maxWeight: number | null;
+  isActive: boolean;
+  deletedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface VehicleDocumentSetting {
   id: string;
-  vehicleType: string;
+  vehicleTypeId: string;
+  vehicleType: VehicleType;
   docName: string;
   requiresExpiration: boolean;
   isRequired: boolean;
@@ -61,24 +74,24 @@ interface VehicleDocumentSetting {
 }
 
 interface FormData {
-  vehicleType: string;
+  vehicleTypeId: string;
   docName: string;
   requiresExpiration: boolean;
   isRequired: boolean;
 }
 
-const VEHICLE_TYPES = ["bike", "bicycle", "van"];
-
 export function VehicleDocumentSettings() {
   const { token } = useAuth();
   const [settings, setSettings] = useState<VehicleDocumentSetting[]>([]);
+  const [vehicleTypes, setVehicleTypes] = useState<VehicleType[]>([]);
   const [loading, setLoading] = useState(false);
   const [showFormDialog, setShowFormDialog] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [selectedVehicleType, setSelectedVehicleType] = useState<string>("");
   const [formData, setFormData] = useState<FormData>({
-    vehicleType: "",
+    vehicleTypeId: "",
     docName: "",
     requiresExpiration: false,
     isRequired: true,
@@ -86,15 +99,37 @@ export function VehicleDocumentSettings() {
 
   useEffect(() => {
     if (token) {
+      fetchVehicleTypes();
       fetchSettings();
     }
   }, [token]);
+
+  const fetchVehicleTypes = async () => {
+    if (!token) return;
+    try {
+      const response = await api.admin.getVehicleTypes(token, false);
+      if (response.success && response.data) {
+        // Only get active vehicle types
+        setVehicleTypes(
+          response.data.filter((vt) => vt.isActive && !vt.deletedAt)
+        );
+        if (response.data.length > 0) {
+          setSelectedVehicleType(response.data[0].name);
+        }
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const fetchSettings = async () => {
     if (!token) return;
     setLoading(true);
     try {
-      const response = await api.admin.getVehicleDocumentSettings(token);
+      const response = await api.admin.getVehicleDocumentSettings(
+        token,
+        selectedVehicleType || undefined
+      );
       if (response.success && response.data) {
         setSettings(response.data);
       } else {
@@ -108,11 +143,18 @@ export function VehicleDocumentSettings() {
     }
   };
 
+  // Refetch settings when selected vehicle type changes
+  useEffect(() => {
+    if (token && selectedVehicleType) {
+      fetchSettings();
+    }
+  }, [selectedVehicleType]);
+
   const handleOpenForm = (setting?: VehicleDocumentSetting) => {
     if (setting) {
       setEditingId(setting.id);
       setFormData({
-        vehicleType: setting.vehicleType,
+        vehicleTypeId: setting.vehicleTypeId,
         docName: setting.docName,
         requiresExpiration: setting.requiresExpiration,
         isRequired: setting.isRequired,
@@ -120,7 +162,7 @@ export function VehicleDocumentSettings() {
     } else {
       setEditingId(null);
       setFormData({
-        vehicleType: "",
+        vehicleTypeId: "",
         docName: "",
         requiresExpiration: false,
         isRequired: true,
@@ -132,7 +174,7 @@ export function VehicleDocumentSettings() {
   const handleSubmit = async () => {
     if (!token) return;
 
-    if (!formData.vehicleType || !formData.docName.trim()) {
+    if (!formData.vehicleTypeId || !formData.docName.trim()) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -198,14 +240,9 @@ export function VehicleDocumentSettings() {
     }
   };
 
-  // Group settings by vehicle type
-  const groupedSettings = settings.reduce((acc, setting) => {
-    if (!acc[setting.vehicleType]) {
-      acc[setting.vehicleType] = [];
-    }
-    acc[setting.vehicleType].push(setting);
-    return acc;
-  }, {} as Record<string, VehicleDocumentSetting[]>);
+  const currentVehicleType = vehicleTypes.find(
+    (vt) => vt.name === selectedVehicleType
+  );
 
   return (
     <div className="p-6 space-y-6">
@@ -224,6 +261,26 @@ export function VehicleDocumentSettings() {
         </Button>
       </div>
 
+      {/* Vehicle Type Selector */}
+      <div className="flex items-center gap-4">
+        <Label htmlFor="vehicleTypeFilter">Vehicle Type:</Label>
+        <Select
+          value={selectedVehicleType}
+          onValueChange={setSelectedVehicleType}
+        >
+          <SelectTrigger id="vehicleTypeFilter" className="w-[200px]">
+            <SelectValue placeholder="Select vehicle type" />
+          </SelectTrigger>
+          <SelectContent>
+            {vehicleTypes.map((type) => (
+              <SelectItem key={type.id} value={type.name}>
+                {type.name.charAt(0).toUpperCase() + type.name.slice(1)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       {loading ? (
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin" />
@@ -237,65 +294,66 @@ export function VehicleDocumentSettings() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-6">
-          {Object.entries(groupedSettings).map(
-            ([vehicleType, vehicleSettings]) => (
-              <Card key={vehicleType}>
-                <CardHeader>
-                  <CardTitle className="capitalize">{vehicleType}</CardTitle>
-                  <CardDescription>
-                    Required documents for {vehicleType} riders
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Document Name</TableHead>
-                        <TableHead>Requires Expiration</TableHead>
-                        <TableHead>Required</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {vehicleSettings.map((setting) => (
-                        <TableRow key={setting.id}>
-                          <TableCell className="font-medium">
-                            {setting.docName}
-                          </TableCell>
-                          <TableCell>
-                            {setting.requiresExpiration ? "Yes" : "No"}
-                          </TableCell>
-                          <TableCell>
-                            {setting.isRequired ? "Yes" : "No"}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleOpenForm(setting)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => setDeleteConfirmId(setting.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            )
-          )}
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="capitalize">
+              {currentVehicleType?.name || selectedVehicleType}
+            </CardTitle>
+            <CardDescription>
+              Required documents for{" "}
+              {currentVehicleType?.name || selectedVehicleType} riders
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {settings.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                No document settings configured for this vehicle type
+              </p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Document Name</TableHead>
+                    <TableHead>Requires Expiration</TableHead>
+                    <TableHead>Required</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {settings.map((setting) => (
+                    <TableRow key={setting.id}>
+                      <TableCell className="font-medium">
+                        {setting.docName}
+                      </TableCell>
+                      <TableCell>
+                        {setting.requiresExpiration ? "Yes" : "No"}
+                      </TableCell>
+                      <TableCell>{setting.isRequired ? "Yes" : "No"}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleOpenForm(setting)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => setDeleteConfirmId(setting.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Form Dialog */}
@@ -313,18 +371,18 @@ export function VehicleDocumentSettings() {
             <div className="space-y-2">
               <Label htmlFor="vehicleType">Vehicle Type *</Label>
               <Select
-                value={formData.vehicleType}
+                value={formData.vehicleTypeId}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, vehicleType: value })
+                  setFormData({ ...formData, vehicleTypeId: value })
                 }
               >
                 <SelectTrigger id="vehicleType">
                   <SelectValue placeholder="Select vehicle type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {VEHICLE_TYPES.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                  {vehicleTypes.map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.name.charAt(0).toUpperCase() + type.name.slice(1)}
                     </SelectItem>
                   ))}
                 </SelectContent>

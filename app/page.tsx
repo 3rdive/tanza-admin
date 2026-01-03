@@ -1,19 +1,20 @@
 "use client";
 
-import { LoginPage } from "@/components/login-page";
-import { Dashboard } from "@/components/dashboard";
 import { useAppSelector } from "@/lib/hooks";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function Page() {
   const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const router = useRouter();
 
-  const handleLoginSuccess = () => {
-    // This can be removed or kept for navigation if needed
-  };
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push("/dashboard");
+    } else {
+      router.push("/login");
+    }
+  }, [isAuthenticated, router]);
 
-  if (!isAuthenticated) {
-    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
-  }
-
-  return <Dashboard onLogout={() => {}} />;
+  return null;
 }

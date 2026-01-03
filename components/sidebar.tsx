@@ -10,30 +10,66 @@ import {
   Settings,
   Moon,
   Sun,
+  Truck,
+  Bell,
 } from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppSelector } from "@/lib/hooks";
 import { useTheme } from "next-themes";
+import { useAuth } from "@/lib/hooks";
 
-interface SidebarProps {
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
-  onLogout: () => void;
-}
+interface SidebarProps {}
 
-export function Sidebar({ activeTab, setActiveTab, onLogout }: SidebarProps) {
+export function Sidebar({}: SidebarProps) {
   const { user } = useAppSelector((state) => state.auth);
   const { theme, setTheme } = useTheme();
+  const { logout } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
 
   const navItems = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { id: "riders", label: "Rider Revenue", icon: TrendingUp },
-    { id: "users", label: "User Management", icon: Users },
-    { id: "orders", label: "Orders", icon: Package },
-    { id: "rider-documents", label: "Rider Documents", icon: FileText },
-    { id: "vehicle-settings", label: "Vehicle Settings", icon: Settings },
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      icon: LayoutDashboard,
+      href: "/dashboard",
+    },
+    { id: "riders", label: "Rider Revenue", icon: TrendingUp, href: "/riders" },
+    { id: "users", label: "User Management", icon: Users, href: "/users" },
+    { id: "orders", label: "Orders", icon: Package, href: "/orders" },
+    {
+      id: "promotions",
+      label: "Promotions",
+      icon: Bell,
+      href: "/promotions",
+    },
+    {
+      id: "rider-documents",
+      label: "Rider Documents",
+      icon: FileText,
+      href: "/rider-documents",
+    },
+    {
+      id: "vehicle-settings",
+      label: "Vehicle Settings",
+      icon: Settings,
+      href: "/vehicle-settings",
+    },
+    {
+      id: "vehicle-types",
+      label: "Vehicle Types",
+      icon: Truck,
+      href: "/vehicle-types",
+    },
   ];
+
+  const handleLogout = () => {
+    logout();
+    router.push("/login");
+  };
 
   const getInitials = () => {
     if (user?.firstName && user?.lastName) {
@@ -77,11 +113,11 @@ export function Sidebar({ activeTab, setActiveTab, onLogout }: SidebarProps) {
       <nav className="flex-1 px-4 space-y-2">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = activeTab === item.id;
+          const isActive = pathname === item.href;
           return (
-            <button
+            <Link
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              href={item.href}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-colors ${
                 isActive
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
@@ -90,7 +126,7 @@ export function Sidebar({ activeTab, setActiveTab, onLogout }: SidebarProps) {
             >
               <Icon className="w-5 h-5" />
               {item.label}
-            </button>
+            </Link>
           );
         })}
       </nav>
@@ -110,7 +146,7 @@ export function Sidebar({ activeTab, setActiveTab, onLogout }: SidebarProps) {
         <Button
           variant="ghost"
           className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent"
-          onClick={onLogout}
+          onClick={handleLogout}
         >
           <LogOut className="w-5 h-5 mr-3" />
           Logout

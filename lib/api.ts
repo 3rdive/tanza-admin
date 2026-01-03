@@ -121,6 +121,7 @@ interface RiderInfo {
   createdAt: string;
   updatedAt: string;
   documents: RiderDocument[];
+  userName: string;
 }
 
 interface RiderDocumentsResponse {
@@ -142,7 +143,18 @@ interface UpdateDocumentStatusResponse {
 
 interface VehicleDocumentSetting {
   id: string;
-  vehicleType: string;
+  vehicleTypeId: string;
+  vehicleType: {
+    id: string;
+    name: string;
+    description: string;
+    baseFee: number;
+    maxWeight: number | null;
+    isActive: boolean;
+    deletedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+  };
   docName: string;
   requiresExpiration: boolean;
   isRequired: boolean;
@@ -163,17 +175,76 @@ interface VehicleDocumentSettingResponse {
 }
 
 interface CreateVehicleDocumentSettingRequest {
-  vehicleType: string;
+  vehicleTypeId: string;
   docName: string;
   requiresExpiration: boolean;
   isRequired: boolean;
 }
 
 interface UpdateVehicleDocumentSettingRequest {
-  vehicleType?: string;
+  vehicleTypeId?: string;
   docName?: string;
   requiresExpiration?: boolean;
   isRequired?: boolean;
+}
+
+// Vehicle Types interfaces
+interface VehicleType {
+  id: string;
+  name: string;
+  displayName?: string;
+  description: string;
+  baseFee: number;
+  maxWeight: number | null;
+  isActive: boolean;
+  deletedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface VehicleTypesResponse {
+  success: boolean;
+  data?: VehicleType[];
+  message?: string;
+}
+
+interface VehicleTypeResponse {
+  success: boolean;
+  data?: VehicleType;
+  message?: string;
+}
+
+interface CreateVehicleTypeRequest {
+  name: string;
+  description: string;
+  baseFee: number;
+  maxWeight?: number | null;
+  isActive: boolean;
+}
+
+interface UpdateVehicleTypeRequest {
+  name?: string;
+  description?: string;
+  baseFee?: number;
+  maxWeight?: number | null;
+  isActive?: boolean;
+}
+
+// Notification interfaces
+interface SendBulkNotificationRequest {
+  title: string;
+  body: string;
+  userIds: string[];
+  data?: {
+    route?: string;
+    [key: string]: any;
+  };
+}
+
+interface SendBulkNotificationResponse {
+  success: boolean;
+  data?: any;
+  message?: string;
 }
 
 export const api = {
@@ -294,14 +365,15 @@ export const api = {
 
     // Vehicle Document Settings APIs
     getVehicleDocumentSettings: async (
-      token: string
+      token: string,
+      vehicleTypeName?: string
     ): Promise<VehicleDocumentSettingsResponse> => {
-      const response = await fetch(
-        `${API_BASE_URL}/admin/vehicle-document-settings`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const url = vehicleTypeName
+        ? `${API_BASE_URL}/admin/vehicle-document-settings/vehicle-type/${vehicleTypeName}`
+        : `${API_BASE_URL}/admin/vehicle-document-settings`;
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       return response.json();
     },
 
@@ -364,6 +436,110 @@ export const api = {
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      return response.json();
+    },
+
+    // Vehicle Types APIs
+    getVehicleTypes: async (
+      token: string,
+      includeInactive?: boolean
+    ): Promise<VehicleTypesResponse> => {
+      const params = new URLSearchParams();
+      if (includeInactive !== undefined) {
+        params.append("includeInactive", includeInactive.toString());
+      }
+      const url = `${API_BASE_URL}/vehicle-types${
+        params.toString() ? `?${params.toString()}` : ""
+      }`;
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return response.json();
+    },
+
+    getVehicleTypeById: async (
+      token: string,
+      id: string
+    ): Promise<VehicleTypeResponse> => {
+      const response = await fetch(`${API_BASE_URL}/vehicle-types/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return response.json();
+    },
+
+    createVehicleType: async (
+      token: string,
+      data: CreateVehicleTypeRequest
+    ): Promise<VehicleTypeResponse> => {
+      const response = await fetch(`${API_BASE_URL}/vehicle-types`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      return response.json();
+    },
+
+    updateVehicleType: async (
+      token: string,
+      id: string,
+      data: UpdateVehicleTypeRequest
+    ): Promise<VehicleTypeResponse> => {
+      const response = await fetch(`${API_BASE_URL}/vehicle-types/${id}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      return response.json();
+    },
+
+    deleteVehicleType: async (
+      token: string,
+      id: string
+    ): Promise<{ success: boolean; message?: string }> => {
+      const response = await fetch(`${API_BASE_URL}/vehicle-types/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return response.json();
+    },
+
+    restoreVehicleType: async (
+      token: string,
+      id: string
+    ): Promise<{ success: boolean; message?: string }> => {
+      const response = await fetch(
+        `${API_BASE_URL}/vehicle-types/${id}/restore`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      return response.json();
+    },
+  },
+
+  notifications: {
+    sendBulkPushNotification: async (
+      token: string,
+      data: SendBulkNotificationRequest
+    ): Promise<SendBulkNotificationResponse> => {
+      const response = await fetch(
+        `${API_BASE_URL}/notification/push/send-bulk`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
         }
       );
       return response.json();

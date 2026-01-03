@@ -60,6 +60,7 @@ interface RiderInfo {
   createdAt: string;
   updatedAt: string;
   documents: RiderDocument[];
+  userName: string;
 }
 
 export function RiderDocuments() {
@@ -212,7 +213,7 @@ export function RiderDocuments() {
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
-                    <CardTitle>Rider: {riderInfo.userId}</CardTitle>
+                    <CardTitle>Rider: {riderInfo.userId} | {riderInfo.userName}</CardTitle>
                     <CardDescription>
                       Vehicle Type: {riderInfo.vehicleType} | Status:{" "}
                       {getStatusBadge(riderInfo.documentStatus)}
